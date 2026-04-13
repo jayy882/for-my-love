@@ -3,10 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <!-- 强制浏览器不缓存，确保每次打开都是最新内容 -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <title>小熊猫和兔子的有声绘本</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -15,16 +11,26 @@
         body { background-color: #d2c5b3; color: var(--dark); font-family: -apple-system, sans-serif; margin: 0; padding: 0; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center; }
         .paper-bg { background-color: var(--paper); background-image: url("https://www.transparenttextures.com/patterns/p6.png"); box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
         .title-font { font-family: 'Ma Shan Zheng', cursive; }
-        .img-frame { border: 6px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 2px; transition: opacity 0.4s ease; }
+        
+        /* 图片加载时的动画 */
+        .img-frame { border: 6px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 2px; transition: opacity 0.6s ease-in-out; }
         .btn-active { background: var(--brown); color: white; transition: all 0.2s; cursor: pointer; border: none; }
         .btn-active:active { transform: scale(0.95); background: var(--dark); }
         .spinning { animation: rotate 8s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        #content-wrap { transition: opacity 0.4s ease; }
+        
+        /* 隐藏加载中的资源 */
+        #preload-container { position: absolute; width: 0; height: 0; overflow: hidden; z-index: -1; }
+        
+        /* 加载指示器 */
+        .loader { width: 24px; height: 24px; border: 3px solid #eee; border-top: 3px solid var(--brown); border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <!-- 音频资源 -->
+    <!-- 预加载容器 -->
+    <div id="preload-container"></div>
+
     <audio id="bgm-player" loop preload="auto">
         <source src="bgm.m4a" type="audio/mp4">
         <source src="bgm.mp3" type="audio/mpeg">
@@ -36,12 +42,15 @@
             <svg id="music-icon" class="spinning" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8d6e63" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
         </button>
 
-        <div class="w-full md:w-3/5 h-1/2 md:h-full bg-stone-100/50 flex items-center justify-center p-4">
+        <!-- 图片展示 -->
+        <div class="w-full md:w-3/5 h-1/2 md:h-full bg-stone-100/50 flex items-center justify-center p-4 relative">
+            <div id="img-loader" class="loader absolute z-10"></div>
             <img id="main-img" src="" class="img-frame max-w-full max-h-full object-contain opacity-0">
         </div>
 
+        <!-- 文字区 -->
         <div class="w-full md:w-2/5 h-1/2 md:h-full p-6 md:p-10 flex flex-col justify-between text-left">
-            <div id="content-wrap" class="opacity-0">
+            <div id="content-wrap" class="opacity-0 transition-opacity duration-500">
                 <div class="flex justify-between items-center mb-2">
                     <span id="page-label" class="text-[10px] tracking-widest font-bold opacity-30">PAGE 01</span>
                     <span id="audio-indicator" class="text-[10px] text-stone-400 font-bold"></span>
@@ -53,6 +62,7 @@
             <div class="border-t border-stone-200 pt-4">
                 <div id="start-screen">
                     <button id="btn-start" class="btn-active w-full py-4 rounded-full font-bold shadow-lg text-lg">开启我们的故事</button>
+                    <p id="loading-hint" class="text-[10px] mt-2 opacity-40 text-center">点击后将自动优化加载速度</p>
                 </div>
                 <div id="nav-screen" class="hidden flex gap-3">
                     <button id="btn-prev" class="w-14 h-14 rounded-full border border-stone-200 flex items-center justify-center text-stone-400">
@@ -66,7 +76,6 @@
     </div>
 
     <script>
-        // 【故事内容 - 已同步你最新的文字修改】
         const storyData = [
             { t: "扉页：森林的远方", i: "5bf84e066bceb06a74585854eccb78de.png", a: "1.m4a.m4a", b: "森林里住着很多动物。小熊猫住在东边，小柴犬住在西边。一片树叶要飘一整个秋天才到。" },
             { t: "梧桐叶的约定", i: "2723a9886e7af1f95331eb91bc9ab3cc.png", a: "2.m4a.m4a", b: "森林很大它们约定用大大的梧桐叶通信，由山雀快递员传递思念，那是森林里最好听的声音。" },
@@ -76,29 +85,43 @@
             { t: "最平整的叶子", i: "70be20387517a80606b7fb397d352c7f.png", a: "6.m4a.m4a", b: "小柴犬翻看着那片带有指甲印痕的叶子，想起了那只为它对抗校长的勇敢小熊猫，心中充满了冬日暖阳般的温柔。" },
             { t: "第二件事：云端航程", i: "c7a2acc237a6e9e2c58d246be7695fc5.png", a: "7.m4a.m4a", b: "周一，小柴犬搭乘长途大雁航班飞回森林。在高空的云层与寒风中，它的爪子缩在毛里，满心期待着降落在那片草坪。" },
             { t: "漫长的准备", i: "b21cd3fe95f11a07360a98087f168ced.png", a: "8.m4a.m4a", b: "赶在晚课前，小熊猫慢条斯理地洗澡、抹上蜂蜜桂花身体乳。它在拖延时间，只为等那架树叶听筒里响起兔子的声音。" },
-            { t: "校门口的守望", i: "9319a8010f2edb98f8c5a0baea888eaf.png", a: "9.m4a.m4a", b: "太阳落入树梢，小熊猫走向校门。它在留给柴犬的梧桐叶背面，用浆果汁写下了最简单的告白：“我爱你”。" },
+            { t: "校门口的守望", i: "9319a8010f2edb98f8c5a0baea888eaf.png", a: "9.m4a.m4a", b: "太阳落山了，小熊猫在校门口留下一片梧桐叶。上面写着最简单的告白：“我爱你”。" },
             { t: "最好的声音", i: "d7f6aab3806f463efdeccc9cdba71915.png", a: "10.m4a.m4a", b: "小柴犬每晚枕着叶子睡去，听着叶脉断裂的声音，那是最好的声音。" }
         ];
 
         let index = 0, started = false;
         const bgm = document.getElementById('bgm-player'), voice = document.getElementById('voice-player');
         const mainImg = document.getElementById('main-img'), contentWrap = document.getElementById('content-wrap');
+        const imgLoader = document.getElementById('img-loader');
+
+        // 预加载所有图片的功能
+        function preloadAllImages() {
+            storyData.forEach((page) => {
+                const img = new Image();
+                img.src = page.i;
+                document.getElementById('preload-container').appendChild(img);
+            });
+        }
 
         function update() {
-            if (!contentWrap || !mainImg) return;
             contentWrap.style.opacity = '0';
             mainImg.style.opacity = '0';
+            imgLoader.style.display = 'block';
             
             setTimeout(() => {
                 const data = storyData[index];
-                // 强制刷新后缀，解决 GitHub 更新延迟和浏览器缓存问题
-                const forceRefresh = "?v=" + new Date().getTime();
                 
-                mainImg.src = data.i + forceRefresh;
-                mainImg.onload = () => { mainImg.style.opacity = '1'; };
+                mainImg.src = data.i;
+                mainImg.onload = () => { 
+                    mainImg.style.opacity = '1'; 
+                    imgLoader.style.display = 'none';
+                };
+                
                 mainImg.onerror = () => {
                     if (mainImg.src.includes('.png')) {
-                        mainImg.src = data.i.replace('.png', '.jpg') + forceRefresh;
+                        mainImg.src = data.i.replace('.png', '.jpg');
+                    } else {
+                        imgLoader.style.display = 'none';
                     }
                 };
 
@@ -111,10 +134,10 @@
                 contentWrap.style.opacity = '1';
 
                 if (started && voice) {
-                    voice.src = data.a + forceRefresh;
+                    voice.src = data.a;
                     voice.play().catch(() => {
                         if (data.a.includes('.m4a.m4a')) {
-                            voice.src = data.a.replace('.m4a.m4a', '.m4a') + forceRefresh;
+                            voice.src = data.a.replace('.m4a.m4a', '.m4a');
                             voice.play().catch(() => {});
                         }
                     });
@@ -124,13 +147,11 @@
 
         document.getElementById('btn-start').onclick = function() {
             started = true;
+            preloadAllImages(); // 关键：开启后台预加载
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('nav-screen').classList.remove('hidden');
             document.getElementById('music-toggle').classList.remove('hidden');
-            if (bgm) { 
-                bgm.volume = 0.25; 
-                bgm.play().catch(() => {}); 
-            }
+            if (bgm) { bgm.volume = 0.25; bgm.play().catch(() => {}); }
             update();
         };
 
@@ -140,6 +161,7 @@
             if (bgm.paused) { bgm.play(); document.getElementById('music-icon').classList.add('spinning'); }
             else { bgm.pause(); document.getElementById('music-icon').classList.remove('spinning'); }
         };
+        
         window.onload = update;
     </script>
 </body>
