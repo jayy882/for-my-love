@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小熊猫和兔子的两件事 - 爱的礼物版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+        :root { --paper-color: #fdfaf5; --text-color: #4e342e; }
+        body { background-color: #d2c5b3; color: var(--text-color); font-family: 'PingFang SC', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .paper-texture { background-color: var(--paper-color); background-image: url("https://www.transparenttextures.com/patterns/p6.png"); box-shadow: 0 30px 60px rgba(0,0,0,0.2); border: 1px solid #e0d5c1; }
+        .title-font { font-family: 'Ma Shan Zheng', cursive; }
+        .image-frame { border: 10px solid #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.12); border-radius: 2px; }
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-btn { background: #8d6e63; color: white; transition: all 0.3s; cursor: pointer; border: none; }
+        .nav-btn:hover:not(:disabled) { background: #5d4037; transform: scale(1.05); }
+        .nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .status-pill { font-size: 11px; padding: 4px 12px; border-radius: 99px; background: #efebe9; color: #8d6e63; }
+        .error-log { font-size: 10px; color: #e57373; margin-top: 5px; background: #fff5f5; padding: 5px; border-radius: 4px; display: none; white-space: pre-wrap; }
+        
+        /* 针对手机小屏幕的优化 */
+        @media (max-width: 768px) {
+            #book-container { min-height: auto; }
+            .image-frame { border-width: 6px; }
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div id="book-container" class="w-full max-w-5xl paper-texture rounded-xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+        <!-- 左侧插画 -->
+        <div class="w-full md:w-3/5 p-4 md:p-8 flex items-center justify-center bg-stone-50/50">
+            <img id="story-img" src="" class="image-frame w-full h-auto max-h-[60vh] object-contain mx-auto">
+        </div>
+        <!-- 右侧内容 -->
+        <div class="w-full md:w-2/5 p-6 md:p-10 flex flex-col justify-between">
+            <div id="text-container" class="fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <span id="page-label" class="text-xs tracking-widest font-bold opacity-30">PAGE 01</span>
+                    <div id="audio-indicator" class="status-pill">点击下方按钮开启音乐</div>
+                </div>
+                <h1 id="story-title" class="title-font text-3xl md:text-4xl mb-6 text-stone-800"></h1>
+                <div id="story-body" class="text-base md:text-lg leading-relaxed text-stone-700 space-y-4 font-serif"></div>
+                <div id="error-display" class="error-log"></div>
+            </div>
+
+            <!-- 导航与控制 -->
+            <div class="mt-8 pt-6 border-t border-stone-200">
+                <div class="flex gap-4">
+                    <button id="prev-btn" class="nav-btn w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <button id="next-btn" class="nav-btn flex-1 h-12 md:h-14 rounded-full font-bold tracking-widest flex items-center justify-center gap-2">
+                        <span id="btn-text">点击开启故事</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                </div>
+                <div class="text-center mt-4 text-xs text-stone-400 font-mono" id="total-progress">1 / 10</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐藏的音频播放器 -->
+    <audio id="audio-player" preload="auto"></audio>
+
+    <script>
+        const storyData = [
+            { 
+                title: "扉页：森林的远方", 
+                image: "c8e0bbae99953bcf812024a63ff7055d.png", 
+                audio: "1.m4a", 
+                body: "森林里住着很多动物。小熊猫住在东边，小柴犬住在西边。一片树叶要飘整整一个秋天才能到。" 
+            },
+            { 
+                title: "梧桐叶的约定", 
+                image: "2723a9886e7af1f95331eb91bc9ab3cc.png", 
+                audio: "2.m4a", 
+                body: "森林很大它们约定用大大的梧桐叶通信，由山雀快递员传递思念，那是森林里最好听的声音。" 
+            },
+            { 
+                title: "第一件事：课堂秘密", 
+                image: "a3eaed4c40d0065df2b66679c2601bd8.png", 
+                audio: "3.m4a", 
+                body: `山羊校长戴着圆眼镜，在教室里无声地巡视。坐在后排的小熊猫正在写着信: "今天山羊又又又让我们跑圈，可直接给我累摆嘞"` 
+            },
+            { 
+                title: "勇敢的守护", 
+                image: "afc637b439bb58fddf5e3f6322119e81.png", 
+                audio: "4.m4a", 
+                body: "山羊老师现场就抓包了小熊猫，“不要读！”小熊猫为了守护信件，像落叶一样被校长拖着滑过走道。它宁愿在木地板上蹭出印痕，也不愿让秘密曝光。" 
+            },
+            { 
+                title: "“给小张”的秘密", 
+                image: "317f52451207bb5459f75096be27b4a4.png", 
+                audio: "5.m4a", 
+                body: "揉皱的叶子被小心展平，紫色野葡萄汁重新写下了代号。这是森林里最皱也最平整的一片叶子，承载着最坚定的心意。" 
+            },
+            { 
+                title: "最平整的叶子", 
+                image: "70be20387517a80606b7fb397d352c7f.png", 
+                audio: "6.m4a", 
+                body: "小柴犬翻看着那片带有指甲印痕的叶子，想起了那只为它对抗校长的勇敢小熊猫，心中充满了冬日暖阳般的温柔。" 
+            },
+            { 
+                title: "第二件事：云端航程", 
+                image: "c7a2acc237a6e9e2c58d246be7695fc5.png", 
+                audio: "7.m4a", 
+                body: "周一，小柴犬搭乘长途大雁航班飞回森林。在高空的云层与寒风中，它的爪子缩在毛里，满心期待着降落在那片草坪。" 
+            },
+            { 
+                title: "漫长的准备", 
+                image: "b21cd3fe95f11a07360a98087f168ced.png", 
+                audio: "8.m4a", 
+                body: "赶在晚课前，小熊猫慢条斯理地洗澡、抹上蜂蜜桂花身体乳。它在拖延时间，只为等那架树叶听筒里响起兔子的声音。" 
+            },
+            { 
+                title: "校门口的守望", 
+                image: "9319a8010f2edb98f8c5a0baea888eaf.png", 
+                audio: "9.m4a", 
+                body: "太阳落入树梢，小熊猫走向校门。它在留给柴犬的梧桐叶背面，用浆果汁写下了最简单的告白：“我爱你”。" 
+            },
+            { 
+                title: "最好的声音", 
+                image: "d7f6aab3806f463efdeccc9cdba71915.png", 
+                audio: "10.m4a", 
+                body: "小柴犬每晚枕着叶子睡去，听着叶脉断裂的声音，那是最好的声音。" 
+            }
+        ];
+
+        let index = 0;
+        let interacted = false;
+        const player = document.getElementById('audio-player');
+        const status = document.getElementById('audio-indicator');
+        const errorLog = document.getElementById('error-display');
+
+        async function tryPlay(filename) {
+            errorLog.style.display = 'none';
+            status.innerText = "正在开启音频之旅...";
+            
+            player.src = filename;
+            
+            try {
+                await player.play();
+                status.innerText = "音乐播放中 🎵";
+            } catch (err) {
+                console.warn("播放尝试:", filename, err);
+                if (!filename.includes('.m4a.m4a')) {
+                    const retryName = filename + ".m4a";
+                    tryPlay(retryName);
+                } else {
+                    status.innerText = "音乐未找到 ❌";
+                    errorLog.innerText = `温馨提示: 请确保音频文件 ${filename} 与此页面放在同一个文件夹里。`;
+                    errorLog.style.display = 'block';
+                }
+            }
+        }
+
+        function render() {
+            const data = storyData[index];
+            const imgEl = document.getElementById('story-img');
+            
+            imgEl.src = data.image;
+            imgEl.onerror = () => {
+                if (imgEl.src.endsWith('.png')) {
+                    imgEl.src = imgEl.src.replace('.png', '.jpg');
+                }
+            };
+
+            document.getElementById('story-title').innerText = data.title;
+            document.getElementById('story-body').innerText = data.body;
+            document.getElementById('page-label').innerText = `PAGE ${String(index + 1).padStart(2, '0')}`;
+            document.getElementById('total-progress').innerText = `${index + 1} / ${storyData.length}`;
+            document.getElementById('prev-btn').disabled = index === 0;
+            
+            if (!interacted) {
+                document.getElementById('btn-text').innerText = "点击开启故事";
+            } else {
+                document.getElementById('btn-text').innerText = index === storyData.length - 1 ? "再读一遍" : "下一页";
+                tryPlay(data.audio);
+            }
+        }
+
+        document.getElementById('next-btn').onclick = () => {
+            if (!interacted) {
+                interacted = true;
+                render();
+                return;
+            }
+            index = (index + 1) % storyData.length;
+            render();
+        };
+
+        document.getElementById('prev-btn').onclick = () => {
+            if (index > 0) {
+                index--;
+                render();
+            }
+        };
+
+        window.onload = render;
+    </script>
+</body>
+</html>
