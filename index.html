@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>小熊猫和兔子的有声绘本</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+        :root { --paper: #fdfaf5; --brown: #8d6e63; --dark: #4e342e; }
+        body { background-color: #d2c5b3; color: var(--dark); font-family: -apple-system, sans-serif; margin: 0; padding: 0; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .paper-bg { background-color: var(--paper); background-image: url("https://www.transparenttextures.com/patterns/p6.png"); box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .title-font { font-family: 'Ma Shan Zheng', cursive; }
+        .img-frame { border: 6px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 2px; transition: opacity 0.4s ease; }
+        .btn-active { background: var(--brown); color: white; transition: all 0.2s; cursor: pointer; border: none; }
+        .btn-active:active { transform: scale(0.95); background: var(--dark); }
+        .spinning { animation: rotate 8s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        #content-wrap { transition: opacity 0.4s ease; }
+    </style>
+</head>
+<body>
+    <!-- 音频资源 -->
+    <audio id="bgm-player" loop preload="auto">
+        <source src="bgm.m4a" type="audio/mp4">
+        <source src="bgm.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="voice-player" preload="auto"></audio>
+
+    <div id="app" class="w-[94vw] max-w-4xl h-[90vh] md:h-[600px] paper-bg rounded-3xl overflow-hidden flex flex-col md:flex-row relative">
+        <button id="music-toggle" class="absolute top-4 right-4 z-50 p-2 bg-white/80 rounded-full hidden shadow-sm">
+            <svg id="music-icon" class="spinning" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8d6e63" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+        </button>
+
+        <div class="w-full md:w-3/5 h-1/2 md:h-full bg-stone-100/50 flex items-center justify-center p-4">
+            <img id="main-img" src="" class="img-frame max-w-full max-h-full object-contain opacity-0">
+        </div>
+
+        <div class="w-full md:w-2/5 h-1/2 md:h-full p-6 md:p-10 flex flex-col justify-between text-left">
+            <div id="content-wrap" class="opacity-0">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="page-label" class="text-[10px] tracking-widest font-bold opacity-30">PAGE 01</span>
+                    <span id="audio-indicator" class="text-[10px] text-stone-400 font-bold"></span>
+                </div>
+                <h1 id="page-title" class="title-font text-2xl md:text-3xl mb-4 text-stone-800"></h1>
+                <p id="page-body" class="text-sm md:text-base leading-relaxed text-stone-600 font-serif italic"></p>
+            </div>
+
+            <div class="border-t border-stone-200 pt-4">
+                <div id="start-screen">
+                    <button id="btn-start" class="btn-active w-full py-4 rounded-full font-bold shadow-lg text-lg">开启我们的故事</button>
+                </div>
+                <div id="nav-screen" class="hidden flex gap-3">
+                    <button id="btn-prev" class="w-14 h-14 rounded-full border border-stone-200 flex items-center justify-center text-stone-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <button id="btn-next" class="btn-active flex-1 h-14 rounded-full font-bold">下一页</button>
+                </div>
+                <div id="progress-text" class="text-center mt-3 text-[10px] text-stone-400 font-mono tracking-widest">1 / 10</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 【第一页已更换为你的新图 5bf84e06...】
+        const storyData = [
+            { t: "扉页：森林的远方", i: "5bf84e066bceb06a74585854eccb78de.png", a: "1.m4a.m4a", b: "森林里住着很多动物。小熊猫住在东边，小柴犬住在西边。一片树叶要飘一整个秋天才到。" },
+            { t: "梧桐叶的约定", i: "2723a9886e7af1f95331eb91bc9ab3cc.png", a: "2.m4a.m4a", b: "森林很大它们约定用大大的梧桐叶通信，由山雀快递员传递思念，那是森林里最好听的声音。"},
+            { t: "第一件事：课堂秘密", i: "a3eaed4c40d0065df2b66679c2601bd8.png", a: "3.m4a.m4a", b: "山羊校长戴着圆眼镜，在教室里无声地巡视。坐在后排的小熊猫正在写着信:"今天山羊又又又让我们跑圈，可直接给我累摆嘞" "},
+            { t: "勇敢的守护", i: "afc637b439bb58fddf5e3f6322119e81.png", a: "4.m4a.m4a", b: "山羊老师现场就抓包了小熊猫，“不要读！”小熊猫为了守护信件，像落叶一样被校长拖着滑过走道。它宁愿在木地板上蹭出印痕，也不愿让秘密曝光。" },
+            { t: "“给小张”的秘密", i: "317f52451207bb5459f75096be27b4a4.png", a: "5.m4a.m4a", b: "揉皱的叶子被小心展平，紫色野葡萄汁重新写下了代号。这是森林里最皱也最平整的一片叶子，承载着最坚定的心意。" },
+            { t: "最平整的叶子", i: "70be20387517a80606b7fb397d352c7f.png", a: "6.m4a.m4a", b: "小柴犬翻看着那片带有指甲印痕的叶子，想起了那只为它对抗校长的勇敢小熊猫，心中充满了冬日暖阳般的温柔。" },
+            { t: "第二件事：云端航程", i: "c7a2acc237a6e9e2c58d246be7695fc5.png", a: "7.m4a.m4a", b: "周一，小柴犬搭乘长途大雁航班飞回森林。在高空的云层与寒风中，它的爪子缩在毛里，满心期待着降落在那片草坪。" },
+            { t: "漫长的准备", i: "b21cd3fe95f11a07360a98087f168ced.png", a: "8.m4a.m4a", b: "赶在晚课前，小熊猫慢条斯理地洗澡、抹上蜂蜜桂花身体乳。它在拖延时间，只为等那架树叶听筒里响起兔子的声音。" },
+            { t: "校门口的守望", i: "9319a8010f2edb98f8c5a0baea888eaf.png", a: "9.m4a.m4a", b: "太阳落入树梢，小熊猫走向校门。它在留给柴犬的梧桐叶背面，用浆果汁写下了最简单的告白：“我爱你”。"},
+            { t: "最好的声音", i: "d7f6aab3806f463efdeccc9cdba71915.png", a: "10.m4a.m4a", b: "小柴犬每晚枕着叶子睡去，听着叶脉断裂的声音，那是最好的声音。"  }
+        ];
+
+        let index = 0, started = false;
+        const bgm = document.getElementById('bgm-player'), voice = document.getElementById('voice-player');
+        const mainImg = document.getElementById('main-img'), contentWrap = document.getElementById('content-wrap');
+
+        function update() {
+            contentWrap.style.opacity = '0';
+            mainImg.style.opacity = '0';
+            
+            setTimeout(() => {
+                const data = storyData[index];
+                // 强制刷新后缀 ?v=2
+                const forceRefresh = "?v=2";
+                
+                mainImg.src = data.i + forceRefresh;
+                mainImg.onload = () => { mainImg.style.opacity = '1'; };
+                mainImg.onerror = () => {
+                    if (mainImg.src.includes('.png')) {
+                        mainImg.src = data.i.replace('.png', '.jpg') + forceRefresh;
+                    }
+                };
+
+                document.getElementById('page-title').innerText = data.t;
+                document.getElementById('page-body').innerText = data.b;
+                document.getElementById('page-label').innerText = `PAGE ${String(index + 1).padStart(2, '0')}`;
+                document.getElementById('progress-text').innerText = `${index + 1} / 10`;
+                document.getElementById('btn-prev').style.visibility = index === 0 ? 'hidden' : 'visible';
+                
+                contentWrap.style.opacity = '1';
+
+                if (started && voice) {
+                    voice.src = data.a + forceRefresh;
+                    voice.play().catch(() => {
+                        if (data.a.includes('.m4a.m4a')) {
+                            voice.src = data.a.replace('.m4a.m4a', '.m4a') + forceRefresh;
+                            voice.play().catch(() => {});
+                        }
+                    });
+                }
+            }, 350);
+        }
+
+        document.getElementById('btn-start').onclick = function() {
+            started = true;
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('nav-screen').classList.remove('hidden');
+            document.getElementById('music-toggle').classList.remove('hidden');
+            if (bgm) { bgm.volume = 0.25; bgm.play().catch(() => {}); }
+            update();
+        };
+
+        document.getElementById('btn-next').onclick = () => { index = (index + 1) % storyData.length; update(); };
+        document.getElementById('btn-prev').onclick = () => { if (index > 0) { index--; update(); } };
+        document.getElementById('music-toggle').onclick = () => {
+            if (bgm.paused) { bgm.play(); document.getElementById('music-icon').classList.add('spinning'); }
+            else { bgm.pause(); document.getElementById('music-icon').classList.remove('spinning'); }
+        };
+        window.onload = update;
+    </script>
+</body>
+</html>
